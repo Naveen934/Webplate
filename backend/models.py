@@ -18,3 +18,14 @@ class Contact(Base):
     name = Column(String)
     email = Column(String)
     message = Column(Text)
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer)
+    product_name = Column(String)
+    customer_name = Column(String)
+    customer_email = Column(String)
+    quantity = Column(Integer, default=1)
+    status = Column(String, default="pending")  # pending, completed, cancelled

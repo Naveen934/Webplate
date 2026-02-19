@@ -22,3 +22,11 @@ def create_contact(db: Session, contact: schemas.ContactCreate):
     db.commit()
     db.refresh(db_contact)
     return db_contact
+
+def create_order(db: Session, order: schemas.OrderCreate):
+    data = order.model_dump() if hasattr(order, "model_dump") else order.dict()
+    db_order = models.Order(**data)
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
+    return db_order

@@ -30,3 +30,20 @@ class Contact(ContactBase):
 
     class Config:
         from_attributes = True
+
+class OrderBase(BaseModel):
+    product_id: int
+    product_name: str
+    customer_name: str
+    customer_email: str
+    quantity: int = 1
+
+class OrderCreate(OrderBase):
+    pass
+
+class Order(OrderBase):
+    id: int
+    status: str
+
+    class Config:
+        from_attributes = True

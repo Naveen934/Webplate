@@ -72,6 +72,17 @@ def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)
             detail=f"Database error: {str(e)}"
         )
 
+@app.post("/orders/", response_model=schemas.Order, status_code=status.HTTP_201_CREATED, tags=["Orders"])
+def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
+    try:
+        return crud.create_order(db=db, order=order)
+    except Exception as e:
+        print(f"Error creating order: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+
 @app.get("/contact-info/", tags=["Contact"])
 def get_contact_info():
     contact = config.get("contact", {})

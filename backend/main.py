@@ -3,7 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import yaml
 import os
-from . import models, schemas, crud, database
+import sys
+
+# Add backend directory to path so absolute imports work on Vercel
+sys.path.insert(0, os.path.dirname(__file__))
+
+import models
+import schemas
+import crud
+import database
 
 # Create database tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -32,7 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency
 def get_db():
     db = database.SessionLocal()
     try:

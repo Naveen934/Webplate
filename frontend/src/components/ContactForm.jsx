@@ -46,7 +46,7 @@ const ContactForm = () => {
                         <div>
                             <p className="text-sm text-gray-500 font-medium">Phone</p>
                             <a href={`tel:${contactInfo.phone}`} className="text-lg font-semibold text-gray-800 hover:text-green-600">
-                                {contactInfo.phone || '+91 9080708039'}
+                                {contactInfo.phone}
                             </a>
                         </div>
                     </div>
@@ -60,7 +60,7 @@ const ContactForm = () => {
                         <div>
                             <p className="text-sm text-gray-500 font-medium">Email</p>
                             <a href={`mailto:${contactInfo.email}`} className="text-lg font-semibold text-gray-800 hover:text-green-600">
-                                {contactInfo.email || 'contact@leafplates.com'}
+                                {contactInfo.email}
                             </a>
                         </div>
                     </div>

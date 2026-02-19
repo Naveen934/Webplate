@@ -14,9 +14,12 @@ api:
   host: "0.0.0.0"
   port: 8000
   allow_origins:
-    - "http://localhost:5173" # Frontend URL
-    - "https://your-frontend-deployment.netlify.app"
+    - "http://localhost:5173" # Frontend local dev URL
+    - "http://localhost:5174"
+    - "http://localhost:5175"
+    - "https://webplate-delta.vercel.app" # Backend Vercel URL (for testing)
+    - "https://your-frontend-name.netlify.app" # Replace with your Netlify URL after deploying frontend
 
 contact:
   email: "contact@leafplates.com"
-  phone: "+1234567890"
+  phone: "+91 9080708039"

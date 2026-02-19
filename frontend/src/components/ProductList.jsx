@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const ProductList = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ const ProductList = () => {
         // const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
         // For now, hardcoding or using relative if proxy is set up
         // Using localhost for dev
-        axios.get('http://localhost:8000/products/')
+        axios.get(`${API_URL}/products/`)
             .then(response => {
                 setProducts(response.data);
                 setLoading(false);

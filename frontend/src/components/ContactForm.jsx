@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const ContactForm = () => {
     const [formData, setFormData] = useState({
         name: '',
@@ -19,7 +21,7 @@ const ContactForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/contact/', formData);
+            await axios.post(`${API_URL}/contact/`, formData);
             setStatus('Message sent successfully!');
             setFormData({ name: '', email: '', message: '' });
         } catch (error) {

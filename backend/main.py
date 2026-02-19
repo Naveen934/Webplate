@@ -13,8 +13,9 @@ import schemas
 import crud
 import database
 
-# Create database tables
-models.Base.metadata.create_all(bind=database.engine)
+# NOTE: Do NOT call create_all() here at module level.
+# Vercel serverless functions cannot hold a DB connection at import time.
+# Create tables via the Supabase dashboard instead (see README).
 
 app = FastAPI(
     title="Leaf Plate Sales API",

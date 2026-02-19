@@ -1,0 +1,22 @@
+# Configuration variables
+# Replace placeholders with actual values
+
+app:
+  name: "Leaf Plate Sales"
+  version: "1.0.0"
+  description: "Web application for selling leaf plates"
+
+database:
+  url: "postgresql://user:password@hostname:port/dbname" # SUPABASE connection string
+  key: "SUPABASE_KEY_PLACEHOLDER"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  allow_origins:
+    - "http://localhost:5173" # Frontend URL
+    - "https://your-frontend-deployment.netlify.app"
+
+contact:
+  email: "contact@leafplates.com"
+  phone: "+1234567890"

@@ -64,3 +64,11 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 @app.post("/contact/", response_model=schemas.Contact, status_code=status.HTTP_201_CREATED, tags=["Contact"])
 def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)):
     return crud.create_contact(db=db, contact=contact)
+
+@app.get("/contact-info/", tags=["Contact"])
+def get_contact_info():
+    contact = config.get("contact", {})
+    return {
+        "phone": contact.get("phone", "N/A"),
+        "email": contact.get("email", "N/A")
+    }

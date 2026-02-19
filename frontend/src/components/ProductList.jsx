@@ -31,16 +31,23 @@ const ProductList = () => {
                 {loading ? (
                     <p className="text-center text-gray-500">Loading products...</p>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                         {products.map(product => (
-                            <div key={product.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300">
-                                <img src={product.image_url || "https://placehold.co/400x300?text=Leaf+Plate"} alt={product.name} className="w-full h-48 object-cover" />
+                            <div key={product.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2">
+                                <div className="relative overflow-hidden h-64">
+                                    <img src={product.image_url || "https://placehold.co/400x300?text=Leaf+Plate"} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                    {!product.is_available && (
+                                        <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                            Out of Stock
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="p-6">
-                                    <h3 className="text-xl font-bold text-gray-800 mb-2">{product.name}</h3>
-                                    <p className="text-gray-600 mb-4">{product.description}</p>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-2xl font-bold text-green-600">${product.price}</span>
-                                        <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition duration-300">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-2">{product.name}</h3>
+                                    <p className="text-gray-500 text-sm mb-6 line-clamp-2 leading-relaxed">{product.description}</p>
+                                    <div className="flex justify-between items-center pt-4 border-t border-gray-50">
+                                        <span className="text-2xl font-extrabold text-green-600">₹{product.price}</span>
+                                        <button className="px-5 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 hover:shadow-lg hover:shadow-green-200 transition-all duration-300">
                                             Buy Now
                                         </button>
                                     </div>

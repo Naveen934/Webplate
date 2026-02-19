@@ -63,7 +63,14 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 
 @app.post("/contact/", response_model=schemas.Contact, status_code=status.HTTP_201_CREATED, tags=["Contact"])
 def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)):
-    return crud.create_contact(db=db, contact=contact)
+    try:
+        return crud.create_contact(db=db, contact=contact)
+    except Exception as e:
+        print(f"Error creating contact: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
 
 @app.get("/contact-info/", tags=["Contact"])
 def get_contact_info():

@@ -5,3 +5,6 @@ psycopg2-binary
 pyyaml
 python-multipart
 python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+requests

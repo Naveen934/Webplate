@@ -12,6 +12,11 @@ import models
 import schemas
 import crud
 import database
+import auth
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+import requests
+from datetime import timedelta
 
 # NOTE: Do NOT call create_all() here at module level.
 # Vercel serverless functions cannot hold a DB connection at import time.
@@ -48,6 +53,27 @@ def get_db():
     finally:
         db.close()
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+async def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    user = crud.get_user_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
+
 @app.get("/", tags=["Root"])
 def read_root():
     return {"message": "Welcome to Leaf Plate Sales API"}
@@ -61,6 +87,34 @@ def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
     return crud.create_product(db=db, product=product)
 
+# --- Auth Routes ---
+
+@app.post("/auth/register", response_model=schemas.User, tags=["Auth"])
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return crud.create_user(db=db, user=user)
+
+@app.post("/auth/token", response_model=schemas.Token, tags=["Auth"])
+async def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+    user = crud.get_user_by_email(db, email=form_data.username)
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me", response_model=schemas.User, tags=["Auth"])
+async def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
 @app.post("/contact/", response_model=schemas.Contact, status_code=status.HTTP_201_CREATED, tags=["Contact"])
 def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)):
     try:
@@ -72,10 +126,47 @@ def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)
             detail=f"Database error: {str(e)}"
         )
 
-@app.post("/orders/", response_model=schemas.Order, status_code=status.HTTP_201_CREATED, tags=["Orders"])
-def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
+@app.post("/orders/", tags=["Orders"])
+def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     try:
-        return crud.create_order(db=db, order=order)
+        # Create order in DB
+        db_order = crud.create_order(db=db, order=order, user_id=current_user.id)
+        
+        # Integrate with Payment Gateway
+        # Note: In a real scenario, this URL would be an environment variable.
+        # Assuming Payment_gateway runs as a separate service or we call its logic.
+        PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "http://localhost:8001")
+        
+        payment_data = {
+            "amount": order.total_amount,
+            "payer_name": current_user.full_name,
+            "note": f"Order #{db_order.id}",
+            "transaction_id": f"ORD{db_order.id}"
+        }
+        
+        try:
+            response = requests.post(f"{PAYMENT_GATEWAY_URL}/payment/create", json=payment_data)
+            if response.status_code == 200:
+                payment_info = response.json()
+                return {
+                    "order_id": db_order.id,
+                    "payment_url": payment_info.get("pay_url"),
+                    "transaction_id": payment_info.get("transaction_id")
+                }
+            else:
+                return {
+                    "order_id": db_order.id,
+                    "payment_url": None,
+                    "message": "Payment gateway unreachable, but order saved."
+                }
+        except Exception as e:
+            print(f"Payment gateway error: {e}")
+            return {
+                "order_id": db_order.id,
+                "payment_url": None,
+                "message": "Payment system temporarily unavailable."
+            }
+
     except Exception as e:
         print(f"Error creating order: {str(e)}")
         raise HTTPException(

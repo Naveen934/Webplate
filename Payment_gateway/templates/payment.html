@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pay ₹{{ amount }} — UPI Payment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0f1e;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --primary: #4f8ef7;
+      --primary-dark: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: rgba(255,255,255,0.08);
+      --radius: 16px;
+      --shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(79, 142, 247, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 440px;
+      overflow: hidden;
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1a2235 100%);
+      padding: 1.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-circle {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--primary), #818cf8);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(79,142,247,0.4);
+    }
+
+    .header-text h1 { font-size: 1.15rem; font-weight: 600; }
+    .header-text p  { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ---------- Amount ---------- */
+    .amount-section {
+      text-align: center;
+      padding: 2rem 2rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .amount-label { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .amount-value {
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f1f5f9, var(--primary));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+      margin: 0.25rem 0 0.5rem;
+    }
+    .txn-note { font-size: 0.85rem; color: var(--text-muted); }
+    .txn-id   { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; font-family: monospace; }
+
+    /* ---------- Status Banner ---------- */
+    .status-banner {
+      margin: 1.25rem 1.5rem 0;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .status-banner.pending  { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+    .status-banner.success  { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+    .status-banner.failed   { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3);  color: #f87171; }
+
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: #fbbf24;
+      animation: pulse 1.5s ease infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; transform:scale(1); } 50% { opacity: 0.4; transform:scale(1.4); } }
+
+    /* ---------- QR Section ---------- */
+    .qr-section {
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .qr-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .qr-label::before, .qr-label::after {
+      content: '';
+      height: 1px;
+      width: 60px;
+      background: var(--border);
+    }
+
+    .qr-wrapper {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 0 30px rgba(79,142,247,0.15);
+    }
+    .qr-wrapper img { display: block; width: 200px; height: 200px; border-radius: 6px; }
+
+    .upi-id-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .upi-id-badge span { color: var(--primary); font-weight: 600; }
+
+    /* ---------- Divider ---------- */
+    .divider {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0 2rem; color: var(--text-muted); font-size: 0.78rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn-group { padding: 1.25rem 2rem 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.65rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-gpay {
+      background: linear-gradient(135deg, #4285F4 0%, #34A853 50%, #FBBC04 75%, #EA4335 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(66,133,244,0.35);
+    }
+    .btn-gpay:hover { filter: brightness(1.1); box-shadow: 0 8px 28px rgba(66,133,244,0.5); }
+
+    .btn-upi {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+    }
+    .btn-upi:hover { filter: brightness(1.1); }
+
+    .btn-icon { font-size: 1.2rem; }
+
+    /* ---------- Info footer ---------- */
+    .info-footer {
+      padding: 0.75rem 2rem 1.5rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+      border-top: 1px solid var(--border);
+    }
+    .info-footer a { color: var(--primary); text-decoration: none; }
+
+    /* ---------- Success overlay ---------- */
+    .success-overlay {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; animation: pop 0.5s ease; }
+    @keyframes pop { 0% { transform: scale(0); } 80% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    .success-title { font-size: 1.4rem; font-weight: 700; color: var(--success); }
+    .success-sub   { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+    /* Mobile tweaks */
+    @media (max-width: 420px) {
+      .card { border-radius: 0; min-height: 100vh; }
+      body  { padding: 0; align-items: flex-start; }
+      .amount-value { font-size: 2.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="paymentCard">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-circle">₹</div>
+      <div class="header-text">
+        <h1>Secure UPI Payment</h1>
+        <p>Zero commission · Instant transfer</p>
+      </div>
+    </div>
+
+    <!-- Amount -->
+    <div class="amount-section">
+      <div class="amount-label">Amount to Pay</div>
+      <div class="amount-value">₹{{ "%.2f"|format(amount) }}</div>
+      <div class="txn-note">{{ note }}</div>
+      <div class="txn-id">TXN: {{ transaction_id }}</div>
+    </div>
+
+    <!-- Status banner -->
+    <div id="statusBanner" class="status-banner pending">
+      <div class="pulse"></div>
+      <span id="statusText">Awaiting payment…</span>
+    </div>
+
+    <!-- QR Code (shown to desktop users, hidden on mobile) -->
+    <div class="qr-section" id="qrSection">
+      <div class="qr-label">Scan with any UPI App</div>
+      <div class="qr-wrapper">
+        <img src="/payment/{{ transaction_id }}/qr" alt="UPI QR Code" />
+      </div>
+      <div class="upi-id-badge">Pay to: <span>naveen1998726-1@okicici</span></div>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider" id="divider">or</div>
+
+    <!-- Buttons -->
+    <div class="btn-group" id="btnGroup">
+      <!-- GPay Intent deep-link -->
+      <a
+        id="gpayBtn"
+        href="{{ gpay_intent_url }}"
+        class="btn btn-gpay"
+      >
+        <span class="btn-icon">G</span>
+        Pay with Google Pay
+      </a>
+
+      <!-- Generic UPI intent (opens any UPI app) -->
+      <a
+        id="upiBtn"
+        href="{{ upi_uri }}"
+        class="btn btn-upi"
+      >
+        <span class="btn-icon">⚡</span>
+        Pay with Any UPI App
+      </a>
+    </div>
+
+    <!-- Success overlay (shown after payment detected) -->
+    <div class="success-overlay" id="successOverlay">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Payment Successful!</div>
+      <div class="success-sub" id="successSubText">Your payment has been received.</div>
+    </div>
+
+    <!-- Info footer -->
+    <div class="info-footer">
+      🔒 Payments are processed directly via UPI — no intermediary fees.<br />
+      Having trouble? Try another UPI app or scan the QR code above.
+    </div>
+
+  </div>
+
+  <script>
+    const TXN_ID = "{{ transaction_id }}";
+    let pollInterval;
+
+    // Hide QR / show only buttons on mobile
+    function isMobile() {
+      return /Android|iPhone|iPad/i.test(navigator.userAgent);
+    }
+
+    if (isMobile()) {
+      const qr = document.getElementById("qrSection");
+      if (qr) qr.style.display = "none";
+    }
+
+    // ----------- Status polling every 5 seconds -----------
+    async function checkStatus() {
+      try {
+        const res = await fetch(`/payment/${TXN_ID}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateBanner(data.status, data.upi_transaction_id);
+      } catch (_) {}
+    }
+
+    function updateBanner(status, utr) {
+      const banner  = document.getElementById("statusBanner");
+      const text    = document.getElementById("statusText");
+
+      banner.className = "status-banner";
+
+      if (status === "SUCCESS") {
+        clearInterval(pollInterval);
+        banner.classList.add("success");
+        text.textContent = "Payment received! ✅";
+
+        // Show success overlay
+        document.getElementById("btnGroup").style.display  = "none";
+        document.getElementById("divider").style.display   = "none";
+        document.getElementById("qrSection").style.display = "none";
+        const overlay = document.getElementById("successOverlay");
+        overlay.style.display = "flex";
+        if (utr) {
+          document.getElementById("successSubText").textContent = `UTR: ${utr}`;
+        }
+
+      } else if (status === "FAILED") {
+        clearInterval(pollInterval);
+        banner.classList.add("failed");
+        text.textContent = "Payment failed. Please try again.";
+      } else if (status === "EXPIRED") {
+        clearInterval(pollInterval);
+        banner.classList.add("failed");
+        text.textContent = "Payment link expired.";
+      } else {
+        banner.classList.add("pending");
+        text.textContent = "Awaiting payment…";
+      }
+    }
+
+    // Initial status + start polling
+    checkStatus();
+    pollInterval = setInterval(checkStatus, 5000);
+  </script>
+</body>
+</html>

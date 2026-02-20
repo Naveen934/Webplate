@@ -31,19 +31,55 @@ class Contact(ContactBase):
     class Config:
         from_attributes = True
 
-class OrderBase(BaseModel):
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+class UserBase(BaseModel):
+    email: str
+    full_name: str
+    phone: str
+    shipping_address: str
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class OrderItemBase(BaseModel):
     product_id: int
     product_name: str
-    customer_name: str
-    customer_email: str
-    quantity: int = 1
+    quantity: int
+    price: float
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItem(OrderItemBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class OrderBase(BaseModel):
+    total_amount: float
 
 class OrderCreate(OrderBase):
-    pass
+    items: List[OrderItemCreate]
 
 class Order(OrderBase):
     id: int
+    user_id: int
     status: str
+    items: List[OrderItem]
 
     class Config:
         from_attributes = True

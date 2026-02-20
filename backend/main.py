@@ -17,6 +17,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 import requests
 from datetime import timedelta
+import time
 
 # NOTE: Do NOT call create_all() here at module level.
 # Vercel serverless functions cannot hold a DB connection at import time.
@@ -128,29 +129,42 @@ def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)
 
 @app.post("/orders/", tags=["Orders"])
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Ensure user has shipping details
+    if not current_user.shipping_address or not current_user.phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Shipping address and phone number are required to place an order. Please update your profile."
+        )
+
     try:
         # Create order in DB
         db_order = crud.create_order(db=db, order=order, user_id=current_user.id)
         
         # Integrate with Payment Gateway
-        # Note: In a real scenario, this URL would be an environment variable.
-        # Assuming Payment_gateway runs as a separate service or we call its logic.
+        # Use the URL where the Payment_gateway service is running
         PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "http://localhost:8001")
         
         payment_data = {
             "amount": order.total_amount,
             "payer_name": current_user.full_name,
             "note": f"Order #{db_order.id}",
-            "transaction_id": f"ORD{db_order.id}"
+            "transaction_id": f"ORD{db_order.id}-{int(time.time())}"
         }
         
         try:
+            # Note: We need to import time for the unique transaction ID
+            import time
             response = requests.post(f"{PAYMENT_GATEWAY_URL}/payment/create", json=payment_data)
             if response.status_code == 200:
                 payment_info = response.json()
+                # Prepend the gateway URL if pay_url is relative
+                pay_url = payment_info.get("pay_url")
+                if pay_url and pay_url.startswith("/"):
+                    pay_url = f"{PAYMENT_GATEWAY_URL}{pay_url}"
+                
                 return {
                     "order_id": db_order.id,
-                    "payment_url": payment_info.get("pay_url"),
+                    "payment_url": pay_url,
                     "transaction_id": payment_info.get("transaction_id")
                 }
             else:

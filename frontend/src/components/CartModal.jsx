@@ -36,9 +36,11 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
             if (response.data.payment_url) {
                 // Redirect to payment gateway
                 window.location.href = response.data.payment_url;
+                // Note: clearCart() should ideally happen after successful payment, 
+                // but since we redirect away, we can clear it here or rely on success return
                 clearCart();
-            } else {
-                setOrderMessage(response.data.message || 'Order placed, but payment gateway is busy. We will contact you.');
+            } else if (response.data.order_id) {
+                setOrderMessage(response.data.message || 'Order placed successfully! We will contact you for payment.');
                 setTimeout(() => {
                     clearCart();
                     onClose();
@@ -46,7 +48,8 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
             }
         } catch (err) {
             console.error("Checkout error", err);
-            setOrderMessage('Failed to place order. Please try again.');
+            const errorMsg = err.response?.data?.detail || 'Failed to place order. Please try again.';
+            setOrderMessage(errorMsg);
         } finally {
             setIsProcessing(false);
         }

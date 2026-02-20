@@ -9,9 +9,15 @@ const ContactForm = () => {
     const [contactInfo, setContactInfo] = useState({ phone: '', email: '' });
 
     useEffect(() => {
+        console.log("Fetching contact info from:", `${API_URL}/contact-info/`);
         axios.get(`${API_URL}/contact-info/`)
-            .then(res => setContactInfo(res.data))
-            .catch(err => console.error("Could not load contact info", err));
+            .then(res => {
+                console.log("Contact info received:", res.data);
+                setContactInfo(res.data);
+            })
+            .catch(err => {
+                console.error("Could not load contact info", err);
+            });
     }, []);
 
     const handleChange = (e) => {

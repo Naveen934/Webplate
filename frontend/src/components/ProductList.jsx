@@ -10,8 +10,10 @@ const ProductList = () => {
     const { addToCart } = useCart();
 
     useEffect(() => {
+        console.log("Fetching products from:", `${API_URL}/products/`);
         axios.get(`${API_URL}/products/`)
             .then(response => {
+                console.log("Products received:", response.data);
                 setProducts(response.data);
                 setLoading(false);
             })

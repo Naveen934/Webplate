@@ -62,26 +62,33 @@ const Register = ({ onToggle, onClose }) => {
                     />
                 </div>
                 <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-1">Phone Number *</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-1 flex justify-between">
+                        <span>Phone Number *</span>
+                        <span className="text-xs font-normal text-green-600">Required for delivery</span>
+                    </label>
                     <input
                         type="tel" required
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:border-green-500"
+                        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:border-green-500 border-green-100"
+                        placeholder="e.g. 9876543210"
                     />
                 </div>
                 <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-1">Shipping Address *</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-1 flex justify-between">
+                        <span>Shipping Address *</span>
+                        <span className="text-xs font-normal text-green-600">Secure delivery</span>
+                    </label>
                     <textarea
                         required rows="3"
                         value={formData.shipping_address}
                         onChange={(e) => setFormData({ ...formData, shipping_address: e.target.value })}
-                        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:border-green-500"
-                        placeholder="Mandatory for shipping"
+                        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:border-green-500 border-green-100"
+                        placeholder="House No, Street, Landmark, City, Pincode"
                     />
                 </div>
-                <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-xl font-bold transition duration-300 hover:bg-green-700">
-                    Register
+                <button type="submit" className="w-full bg-green-600 text-white py-4 rounded-xl font-bold transition duration-300 hover:bg-green-700 shadow-lg shadow-green-100">
+                    Register & Continue
                 </button>
             </form>
             <p className="mt-6 text-center text-sm text-gray-600">

@@ -1,7 +1,11 @@
 import time
 import os
+import sys
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
+
+# Add current directory to path so imports work correctly
+sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse

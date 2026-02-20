@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class ProductBase(BaseModel):
@@ -41,8 +41,8 @@ class TokenData(BaseModel):
 class UserBase(BaseModel):
     email: str
     full_name: str
-    phone: str
-    shipping_address: str
+    phone: str = Field(..., min_length=10)
+    shipping_address: str = Field(..., min_length=5)
 
 class UserCreate(UserBase):
     password: str

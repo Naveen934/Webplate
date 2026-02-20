@@ -1,5 +1,6 @@
 import models
 import schemas
+from sqlalchemy.orm import Session
 from auth import get_password_hash
 
 def get_products(db: Session, skip: int = 0, limit: int = 100):
@@ -41,23 +42,36 @@ def create_contact(db: Session, contact: schemas.ContactCreate):
     return db_contact
 
 def create_order(db: Session, order: schemas.OrderCreate, user_id: int):
+    # Calculate the total amount on the backend for security
+    calculated_total = 0
+    order_items_data = []
+    
+    for item in order.items:
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        if not product:
+            raise Exception(f"Product with id {item.product_id} not found")
+        
+        item_total = product.price * item.quantity
+        calculated_total += item_total
+        
+        order_items_data.append(models.OrderItem(
+            product_id=item.product_id,
+            product_name=product.name,
+            quantity=item.quantity,
+            price=product.price
+        ))
+
     db_order = models.Order(
         user_id=user_id,
-        total_amount=order.total_amount,
+        total_amount=calculated_total,
         status="pending"
     )
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
 
-    for item in order.items:
-        db_item = models.OrderItem(
-            order_id=db_order.id,
-            product_id=item.product_id,
-            product_name=item.product_name,
-            quantity=item.quantity,
-            price=item.price
-        )
+    for db_item in order_items_data:
+        db_item.order_id = db_order.id
         db.add(db_item)
     
     db.commit()

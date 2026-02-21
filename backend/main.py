@@ -263,8 +263,11 @@ def confirm_order_payment(
 ):
     """
     Customer submits UTR number after completing UPI payment.
-    Updates order status to 'paid' and stores the UTR for verification.
+    Validates UTR format (must be exactly 12 digits — the real UPI/IMPS standard).
+    Updates order status to 'awaiting_verification'.
     """
+    import re
+
     db_order = db.query(models.Order).filter(
         models.Order.id == order_id,
         models.Order.user_id == current_user.id
@@ -273,23 +276,60 @@ def confirm_order_payment(
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if db_order.status == "confirmed":
-        return {"message": "Order already confirmed", "order_id": order_id}
+    if db_order.status in ("awaiting_verification", "confirmed"):
+        return {
+            "message": "Payment already submitted for this order. We are verifying it.",
+            "order_id": order_id,
+            "status": db_order.status
+        }
 
     utr = payload.get("utr_number", "").strip()
-    if not utr:
-        raise HTTPException(status_code=400, detail="UTR number is required")
 
+    # --- UTR Format Validation ---
+    # Real UPI/IMPS UTR numbers are ALWAYS exactly 12 digits
+    if not utr:
+        raise HTTPException(status_code=400, detail="UTR number is required.")
+
+    if not re.fullmatch(r"\d{12}", utr):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid UTR format. A valid UPI/IMPS UTR number is always exactly "
+                "12 digits (e.g. 407123456789). Please check your GPay / PhonePe "
+                "transaction history and enter the correct UTR."
+            )
+        )
+
+    # --- Duplicate UTR Check ---
+    # Prevent the same UTR being used for multiple orders
+    existing = db.query(models.Order).filter(
+        models.Order.utr_number == utr,
+        models.Order.id != order_id
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"This UTR ({utr}) has already been used for another order. "
+                "Each payment has a unique UTR. Please check your transaction history."
+            )
+        )
+
+    # Save UTR and mark as awaiting verification (not yet confirmed)
     db_order.utr_number = utr
-    db_order.status = "paid"
+    db_order.status = "awaiting_verification"
     db.commit()
 
-    print(f"Order #{order_id} marked as paid with UTR: {utr}")
+    print(f"Order #{order_id} UTR submitted: {utr} — awaiting manual verification")
     return {
-        "message": "Payment recorded successfully! We'll verify and confirm your order shortly.",
+        "message": (
+            "UTR submitted successfully! Your order is now awaiting verification. "
+            "We will confirm it after checking your payment in our bank account. "
+            "This usually takes a few minutes to a few hours."
+        ),
         "order_id": order_id,
         "utr_number": utr,
-        "status": "paid"
+        "status": "awaiting_verification"
     }
 
 @app.get("/contact-info/", tags=["Contact"])

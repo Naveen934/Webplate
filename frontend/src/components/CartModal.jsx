@@ -23,22 +23,27 @@ const PaymentScreen = ({ paymentInfo, onClose }) => {
     const amount = paymentInfo.upi_uri?.match(/[?&]am=([^&]+)/)?.[1] || '';
 
     const handleConfirmPayment = async () => {
-        if (!utr.trim() || utr.trim().length < 8) {
-            setConfirmError('Please enter a valid UTR / reference number (min 8 characters).');
+        const cleaned = utr.trim().replace(/\s/g, '');
+
+        // Client-side: real UPI UTR is always exactly 12 digits
+        if (!/^\d{12}$/.test(cleaned)) {
+            setConfirmError(
+                'UTR must be exactly 12 digits. Open GPay / PhonePe → Transaction History → tap the payment → copy the 12-digit UTR/reference number.'
+            );
             return;
         }
+
         setSubmitting(true);
         setConfirmError('');
         try {
-            // POST to backend to record UTR and mark order
             await axios.post(`${API_URL}/orders/${paymentInfo.order_id}/confirm`, {
-                utr_number: utr.trim(),
+                utr_number: cleaned,
             });
             setConfirmed(true);
         } catch (err) {
-            console.error('Confirm error:', err);
-            // Even if backend doesn't have the endpoint yet, show success to user
-            setConfirmed(true);
+            // Show the exact error from the backend
+            const msg = err.response?.data?.detail || 'Failed to submit. Please try again.';
+            setConfirmError(msg);
         } finally {
             setSubmitting(false);
         }
@@ -154,21 +159,33 @@ const PaymentScreen = ({ paymentInfo, onClose }) => {
                     {/* UTR Input */}
                     <div className="mb-4">
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                            UTR / Reference Number <span className="text-gray-400 font-normal">(from your UPI app)</span>
+                            UTR / Reference Number <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
+                            inputMode="numeric"
+                            maxLength={12}
                             value={utr}
-                            onChange={(e) => { setUtr(e.target.value); setConfirmError(''); }}
-                            placeholder="e.g. 406123456789"
+                            onChange={(e) => {
+                                // Only allow digits
+                                setUtr(e.target.value.replace(/\D/g, ''));
+                                setConfirmError('');
+                            }}
+                            placeholder="12-digit UTR (e.g. 407123456789)"
                             className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-green-500 transition"
                         />
-                        {confirmError && (
-                            <p className="text-red-500 text-xs mt-1.5">{confirmError}</p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-1.5">
-                            Find the UTR in your UPI app → Transaction History → this payment.
+                        {/* Live digit counter */}
+                        <p className={`text-xs mt-1 ${utr.length === 12 ? 'text-green-600 font-semibold' : 'text-gray-400'}`}>
+                            {utr.length}/12 digits {utr.length === 12 ? '✓' : ''}
                         </p>
+                        {confirmError && (
+                            <p className="text-red-500 text-xs mt-1.5 leading-relaxed">{confirmError}</p>
+                        )}
+                        <div className="mt-2 bg-blue-50 rounded-lg p-2.5 text-xs text-blue-700">
+                            <p className="font-semibold mb-0.5">📱 How to find your UTR:</p>
+                            <p>GPay: Open app → Transactions → tap payment → see "UPI transaction ID"</p>
+                            <p>PhonePe: History → tap payment → "Transaction ID" (12 digits)</p>
+                        </div>
                     </div>
 
                     <button

@@ -28,39 +28,42 @@ except Exception as e:
     print(f"Error initializing tables: {e}")
 
 # Run schema migration to fix orders table schema
+# Strategy: if any stale columns exist, drop order_items + orders and recreate fresh
 try:
     from sqlalchemy import text, inspect as sa_inspect
     _insp = sa_inspect(database.engine)
     _existing_cols = [col["name"] for col in _insp.get_columns("orders")]
 
-    with database.engine.connect() as _conn:
-        # Drop stale columns that belonged to the old single-table order design
-        # These cause NOT NULL violations since the new design uses order_items table
-        _stale_cols = ["product_id", "quantity", "price", "product_name"]
-        for _col in _stale_cols:
-            if _col in _existing_cols:
-                print(f"Schema migration: dropping stale column '{_col}' from orders table...")
-                _conn.execute(text(f"ALTER TABLE orders DROP COLUMN IF EXISTS {_col}"))
-                _conn.commit()
-                print(f"  -> '{_col}' dropped.")
+    # Stale columns from old designs that have NOT NULL constraints blocking inserts
+    _stale = ["product_id", "quantity", "price", "product_name",
+               "customer_name", "customer_email", "customer_phone", "shipping_address"]
 
-        # Re-inspect after drops
-        _insp2 = sa_inspect(database.engine)
-        _existing_cols = [col["name"] for col in _insp2.get_columns("orders")]
+    _needs_recreate = any(c in _existing_cols for c in _stale)
 
-        # Add any missing required columns
-        _migrations = {
-            "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
-            "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
-            "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
-            "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
-        }
-        for _col, _sql in _migrations.items():
-            if _col not in _existing_cols:
-                print(f"Schema migration: adding column '{_col}' to orders table...")
-                _conn.execute(text(_sql))
-                _conn.commit()
-                print(f"  -> '{_col}' added.")
+    if _needs_recreate:
+        print("Schema migration: stale columns detected - dropping and recreating orders tables...")
+        with database.engine.connect() as _conn:
+            _conn.execute(text("DROP TABLE IF EXISTS order_items CASCADE"))
+            _conn.execute(text("DROP TABLE IF EXISTS orders CASCADE"))
+            _conn.commit()
+            print("  -> orders and order_items tables dropped.")
+        # Recreate with current models
+        models.Base.metadata.create_all(bind=database.engine)
+        print("  -> orders and order_items tables recreated cleanly.")
+    else:
+        # Just add any missing columns (safe path when table is already correct)
+        with database.engine.connect() as _conn:
+            _migrations = {
+                "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
+                "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
+                "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
+                "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
+            }
+            for _col, _sql in _migrations.items():
+                if _col not in _existing_cols:
+                    print(f"Schema migration: adding column '{_col}' to orders...")
+                    _conn.execute(text(_sql))
+                    _conn.commit()
 
     print("Schema migration complete.")
 except Exception as e:

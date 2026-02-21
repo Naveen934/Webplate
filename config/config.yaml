@@ -7,8 +7,9 @@ app:
   description: "Web application for selling leaf plates"
 
 database:
-  url: "postgresql://user:password@hostname:port/dbname" # SUPABASE connection string
-  key: "SUPABASE_KEY_PLACEHOLDER"
+  # DATABASE_URL is loaded from backend/.env — do NOT store real credentials here
+  url: "" # managed via DATABASE_URL env var
+  key: "" # managed via SUPABASE_KEY env var if needed
 
 api:
   host: "0.0.0.0"
@@ -18,7 +19,11 @@ api:
     - "http://localhost:5174"
     - "http://localhost:5175"
     - "https://webplate-delta.vercel.app" # Backend Vercel URL (for testing)
-    - "https://webplate-nav.netlify.app" # Replace with your Netlify URL after deploying frontend
+    - "https://webplate-nav.netlify.app" # Netlify frontend URL
+
+payment_gateway:
+  url: "http://localhost:8001" # Local dev; change to deployed URL for production
+  webhook_secret: "supersecret123change_me" # Must match WEBHOOK_SECRET in Payment_gateway
 
 contact:
   email: "naveenlenin934@gmail.com"

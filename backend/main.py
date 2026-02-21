@@ -19,9 +19,13 @@ import requests
 from datetime import timedelta
 import time
 
-# NOTE: Do NOT call create_all() here at module level.
-# Vercel serverless functions cannot hold a DB connection at import time.
-# Create tables via the Supabase dashboard instead (see README).
+# Ensure tables exist (especially important for PostgreSQL/Supabase)
+try:
+    print("Initializing database tables...")
+    models.Base.metadata.create_all(bind=database.engine)
+    print("Database tables initialized successfully.")
+except Exception as e:
+    print(f"Error initializing tables: {e}")
 
 app = FastAPI(
     title="Leaf Plate Sales API",

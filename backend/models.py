@@ -39,8 +39,10 @@ class Order(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     total_amount = Column(Float)
-    status = Column(String, default="pending")  # pending, completed, cancelled
-    created_at = Column(String) # For simplicity, can be DateTime later
+    status = Column(String, default="pending")  # pending, paid, confirmed, cancelled
+    transaction_id = Column(String, nullable=True)  # internal transaction ref
+    utr_number = Column(String, nullable=True)       # customer-submitted UTR
+    created_at = Column(String)  # For simplicity, can be DateTime later
 
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")

@@ -54,10 +54,12 @@ try:
         # Just add any missing columns (safe path when table is already correct)
         with database.engine.connect() as _conn:
             _migrations = {
-                "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
-                "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
-                "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
-                "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
+                "user_id":        "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
+                "total_amount":   "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
+                "status":         "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
+                "created_at":     "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
+                "transaction_id": "ALTER TABLE orders ADD COLUMN transaction_id VARCHAR",
+                "utr_number":     "ALTER TABLE orders ADD COLUMN utr_number VARCHAR",
             }
             for _col, _sql in _migrations.items():
                 if _col not in _existing_cols:
@@ -213,6 +215,13 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
         RECEIVER_NAME   = os.getenv("RECEIVER_NAME", "Naveen")
         transaction_id  = f"ORD{db_order.id}-{int(time.time())}"
 
+        # Save transaction_id to order record
+        try:
+            db_order.transaction_id = transaction_id
+            db.commit()
+        except Exception:
+            pass
+
         upi_params = {
             "pa": RECEIVER_UPI_ID,
             "pn": RECEIVER_NAME,
@@ -229,23 +238,13 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
             + "#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end"
         )
 
-        # PhonePe / generic UPI deep-link (works on most UPI apps on mobile)
-        pay_url = "https://upipay.in/pay?" + urllib.parse.urlencode({
-            "pa": RECEIVER_UPI_ID,
-            "pn": RECEIVER_NAME,
-            "am": f"{order.total_amount:.2f}",
-            "cu": "INR",
-            "tn": f"Order #{db_order.id}",
-        })
-
         print(f"UPI payment link generated for order #{db_order.id}: {upi_uri}")
         return {
             "order_id": db_order.id,
             "transaction_id": transaction_id,
             "upi_uri": upi_uri,
             "gpay_url": gpay_url,
-            "payment_url": pay_url,
-            "message": "Order placed! Use the UPI link or scan QR code to pay."
+            "message": "Order placed! Scan the QR code or use UPI app to pay."
         }
 
     except Exception as e:
@@ -254,6 +253,44 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error: {str(e)}"
         )
+
+@app.post("/orders/{order_id}/confirm", tags=["Orders"])
+def confirm_order_payment(
+    order_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Customer submits UTR number after completing UPI payment.
+    Updates order status to 'paid' and stores the UTR for verification.
+    """
+    db_order = db.query(models.Order).filter(
+        models.Order.id == order_id,
+        models.Order.user_id == current_user.id
+    ).first()
+
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if db_order.status == "confirmed":
+        return {"message": "Order already confirmed", "order_id": order_id}
+
+    utr = payload.get("utr_number", "").strip()
+    if not utr:
+        raise HTTPException(status_code=400, detail="UTR number is required")
+
+    db_order.utr_number = utr
+    db_order.status = "paid"
+    db.commit()
+
+    print(f"Order #{order_id} marked as paid with UTR: {utr}")
+    return {
+        "message": "Payment recorded successfully! We'll verify and confirm your order shortly.",
+        "order_id": order_id,
+        "utr_number": utr,
+        "status": "paid"
+    }
 
 @app.get("/contact-info/", tags=["Contact"])
 def get_contact_info():

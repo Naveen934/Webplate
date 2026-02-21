@@ -54,14 +54,15 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
+class OrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+
 class OrderItemBase(BaseModel):
     product_id: int
     product_name: str
     quantity: int
     price: float
-
-class OrderItemCreate(OrderItemBase):
-    pass
 
 class OrderItem(OrderItemBase):
     id: int

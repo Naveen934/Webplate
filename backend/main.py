@@ -27,24 +27,41 @@ try:
 except Exception as e:
     print(f"Error initializing tables: {e}")
 
-# Run schema migration to add any missing columns (create_all won't alter existing tables)
+# Run schema migration to fix orders table schema
 try:
     from sqlalchemy import text, inspect as sa_inspect
     _insp = sa_inspect(database.engine)
     _existing_cols = [col["name"] for col in _insp.get_columns("orders")]
-    _migrations = {
-        "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
-        "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
-        "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
-        "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
-    }
+
     with database.engine.connect() as _conn:
+        # Drop stale columns that belonged to the old single-table order design
+        # These cause NOT NULL violations since the new design uses order_items table
+        _stale_cols = ["product_id", "quantity", "price", "product_name"]
+        for _col in _stale_cols:
+            if _col in _existing_cols:
+                print(f"Schema migration: dropping stale column '{_col}' from orders table...")
+                _conn.execute(text(f"ALTER TABLE orders DROP COLUMN IF EXISTS {_col}"))
+                _conn.commit()
+                print(f"  -> '{_col}' dropped.")
+
+        # Re-inspect after drops
+        _insp2 = sa_inspect(database.engine)
+        _existing_cols = [col["name"] for col in _insp2.get_columns("orders")]
+
+        # Add any missing required columns
+        _migrations = {
+            "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
+            "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
+            "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
+            "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
+        }
         for _col, _sql in _migrations.items():
             if _col not in _existing_cols:
                 print(f"Schema migration: adding column '{_col}' to orders table...")
                 _conn.execute(text(_sql))
                 _conn.commit()
                 print(f"  -> '{_col}' added.")
+
     print("Schema migration complete.")
 except Exception as e:
     print(f"Schema migration warning: {e}")

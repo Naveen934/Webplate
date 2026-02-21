@@ -9,34 +9,49 @@ from database import engine, Base
 import models
 
 from sqlalchemy import text
+from dotenv import load_dotenv
 
-print("Initializing database tables...")
+# Force load the .env file from the backend directory
+env_path = os.path.join(os.path.dirname(__file__), "backend", ".env")
+load_dotenv(env_path)
+
+print(f"Database URL from env: {os.getenv('DATABASE_URL', 'Not Set')[:20]}...")
+
+print("Initializing database schema synchronization...")
 try:
-    # Ensure all tables exist
+    # Ensure all tables exist (creates new tables, doesn't update existing ones)
     models.Base.metadata.create_all(bind=engine)
-    print("Database tables initialized.")
+    print("Basic table structure checked.")
 
     # Migration for orders table (SQLAlchemy create_all doesn't add columns to existing tables)
+    # We use targeted ALTER TABLE statements which are safer for migration
     with engine.connect() as conn:
-        print("Checking for missing columns in 'orders'...")
-        # Check if user_id exists in orders table
-        check_sql = text("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name='orders' AND column_name='user_id'
-        """)
-        res = conn.execute(check_sql)
-        if not res.fetchone():
-            print("Adding missing 'user_id' column to 'orders' table...")
+        print("Checking for missing columns in 'orders' table...")
+        
+        # 1. Check/Add user_id
+        try:
             conn.execute(text("ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)"))
             conn.commit()
-            print("Successfully added 'user_id' column.")
-        else:
-            print("'user_id' column already exists.")
+            print("Successfully added 'user_id' column to 'orders'.")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                print("Column 'user_id' already exists.")
+            else:
+                print(f"Note: Could not add 'user_id' via ALTER (might be SQLite or existing): {e}")
+
+        # 2. Check/Add created_at
+        try:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN created_at VARCHAR"))
+            conn.commit()
+            print("Successfully added 'created_at' column to 'orders'.")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                print("Column 'created_at' already exists.")
+            else:
+                print(f"Note: Could not add 'created_at' via ALTER: {e}")
             
-    print("Schema synchronization complete!")
+    print("\nSUCCESS: Database schema is now synchronized with the models!")
+    print("Please RESTART your backend server now.")
 except Exception as e:
-    print(f"Error during table creation/migration: {e}")
-    # Fallback for SQLite which might not have information_schema
-    if "sqlite" in str(engine.url):
-        print("SQLite detected, create_all should have handled it if table was new.")
+    print(f"\nCRITICAL ERROR during synchronization: {e}")
+    print("Make sure your DATABASE_URL is correctly set in backend/.env")

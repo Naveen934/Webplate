@@ -27,6 +27,28 @@ try:
 except Exception as e:
     print(f"Error initializing tables: {e}")
 
+# Run schema migration to add any missing columns (create_all won't alter existing tables)
+try:
+    from sqlalchemy import text, inspect as sa_inspect
+    _insp = sa_inspect(database.engine)
+    _existing_cols = [col["name"] for col in _insp.get_columns("orders")]
+    _migrations = {
+        "user_id":      "ALTER TABLE orders ADD COLUMN user_id INTEGER REFERENCES users(id)",
+        "total_amount": "ALTER TABLE orders ADD COLUMN total_amount FLOAT",
+        "status":       "ALTER TABLE orders ADD COLUMN status VARCHAR DEFAULT 'pending'",
+        "created_at":   "ALTER TABLE orders ADD COLUMN created_at VARCHAR",
+    }
+    with database.engine.connect() as _conn:
+        for _col, _sql in _migrations.items():
+            if _col not in _existing_cols:
+                print(f"Schema migration: adding column '{_col}' to orders table...")
+                _conn.execute(text(_sql))
+                _conn.commit()
+                print(f"  -> '{_col}' added.")
+    print("Schema migration complete.")
+except Exception as e:
+    print(f"Schema migration warning: {e}")
+
 app = FastAPI(
     title="Leaf Plate Sales API",
     description="API for Leaf Plate Sales Business",

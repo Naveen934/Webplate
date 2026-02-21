@@ -92,10 +92,18 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 
 @app.post("/auth/register", response_model=schemas.User, tags=["Auth"])
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db=db, user=user)
+    try:
+        db_user = crud.get_user_by_email(db, email=user.email)
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        return crud.create_user(db=db, user=user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Unexpected registration error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Registration failed due to server error: {str(e)}")
 
 @app.post("/auth/token", response_model=schemas.Token, tags=["Auth"])
 async def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):

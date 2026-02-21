@@ -20,7 +20,19 @@ const Register = ({ onToggle, onClose }) => {
             await login(formData.email, formData.password);
             onClose();
         } catch (err) {
-            setError(err.response?.data?.detail || 'Registration failed');
+            console.error("Registration error details:", err.response?.data);
+
+            if (err.response?.data?.detail) {
+                const detail = err.response.data.detail;
+                if (Array.isArray(detail)) {
+                    // Handle FastAPI validation errors (422)
+                    setError(detail.map(d => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join(', '));
+                } else {
+                    setError(detail);
+                }
+            } else {
+                setError('Registration failed. Please check your connection or try again.');
+            }
         }
     };
 

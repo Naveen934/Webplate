@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 # Load .env file
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test.db")
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
 
 # Supabase requires SSL - add sslmode if not already in URL
 if "supabase" in SQLALCHEMY_DATABASE_URL and "sslmode" not in SQLALCHEMY_DATABASE_URL:

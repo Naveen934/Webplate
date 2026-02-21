@@ -15,7 +15,7 @@ import database
 import auth
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-import requests
+import urllib.parse
 from datetime import timedelta
 import time
 
@@ -207,57 +207,46 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
     try:
         # Create order in DB
         db_order = crud.create_order(db=db, order=order, user_id=current_user.id)
-        
-        # Integrate with Payment Gateway
-        # Use the URL where the Payment_gateway service is running
-        PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "http://localhost:8001").rstrip('/')
-        
-        payment_data = {
-            "amount": order.total_amount,
-            "payer_name": current_user.full_name,
-            "note": f"Order #{db_order.id}",
-            "transaction_id": f"ORD{db_order.id}-{int(time.time())}"
+
+        # --- Inline UPI Payment Generation (no external service needed) ---
+        RECEIVER_UPI_ID = os.getenv("RECEIVER_UPI_ID", "naveen1998726-1@okicici")
+        RECEIVER_NAME   = os.getenv("RECEIVER_NAME", "Naveen")
+        transaction_id  = f"ORD{db_order.id}-{int(time.time())}"
+
+        upi_params = {
+            "pa": RECEIVER_UPI_ID,
+            "pn": RECEIVER_NAME,
+            "am": f"{order.total_amount:.2f}",
+            "cu": "INR",
+            "tn": f"Order #{db_order.id}",
+            "tr": transaction_id,
         }
-        
-        print(f"Connecting to payment gateway at: {PAYMENT_GATEWAY_URL}/payment/create")
-        try:
-            response = requests.post(f"{PAYMENT_GATEWAY_URL}/payment/create", json=payment_data, timeout=5)
-            print(f"Payment gateway response status: {response.status_code}")
-            
-            if response.status_code == 200:
-                payment_info = response.json()
-                # Prepend the gateway URL if pay_url is relative
-                pay_url = payment_info.get("pay_url")
-                if pay_url and pay_url.startswith("/"):
-                    pay_url = f"{PAYMENT_GATEWAY_URL}{pay_url}"
-                
-                print(f"Payment session created: {pay_url}")
-                return {
-                    "order_id": db_order.id,
-                    "payment_url": pay_url,
-                    "transaction_id": payment_info.get("transaction_id")
-                }
-            else:
-                print(f"Payment gateway error details: {response.text}")
-                return {
-                    "order_id": db_order.id,
-                    "payment_url": None,
-                    "message": "Payment gateway returned an error, but order saved."
-                }
-        except requests.exceptions.RequestException as e:
-            print(f"Payment gateway connection error: {e}")
-            return {
-                "order_id": db_order.id,
-                "payment_url": None,
-                "message": "Payment system temporarily unreachable."
-            }
-        except Exception as e:
-            print(f"Unexpected payment gateway error: {e}")
-            return {
-                "order_id": db_order.id,
-                "payment_url": None,
-                "message": "Payment system encountered an unexpected error."
-            }
+        upi_uri = "upi://pay?" + urllib.parse.urlencode(upi_params)
+
+        # GPay Android intent deep-link
+        gpay_url = (
+            "intent://pay?" + urllib.parse.urlencode(upi_params)
+            + "#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end"
+        )
+
+        # PhonePe / generic UPI deep-link (works on most UPI apps on mobile)
+        pay_url = "https://upipay.in/pay?" + urllib.parse.urlencode({
+            "pa": RECEIVER_UPI_ID,
+            "pn": RECEIVER_NAME,
+            "am": f"{order.total_amount:.2f}",
+            "cu": "INR",
+            "tn": f"Order #{db_order.id}",
+        })
+
+        print(f"UPI payment link generated for order #{db_order.id}: {upi_uri}")
+        return {
+            "order_id": db_order.id,
+            "transaction_id": transaction_id,
+            "upi_uri": upi_uri,
+            "gpay_url": gpay_url,
+            "payment_url": pay_url,
+            "message": "Order placed! Use the UPI link or scan QR code to pay."
+        }
 
     except Exception as e:
         print(f"Error creating order: {str(e)}")

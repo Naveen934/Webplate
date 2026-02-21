@@ -8,6 +8,7 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
     const { user, token } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
     const [orderMessage, setOrderMessage] = useState('');
+    const [paymentInfo, setPaymentInfo] = useState(null);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -19,42 +20,39 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
 
         setIsProcessing(true);
         setOrderMessage('');
+        setPaymentInfo(null);
 
         try {
             const orderData = {
                 total_amount: cartTotal,
                 items: cart.map(item => ({
                     product_id: item.id,
-                    product_name: item.name,
                     quantity: item.quantity,
-                    price: item.price
                 }))
             };
 
-            const response = await axios.post(`${API_URL}/orders/`, orderData);
+            const response = await axios.post(`${API_URL}/orders/`, orderData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-            if (response.data.payment_url) {
-                // Redirect to payment gateway
-                window.location.href = response.data.payment_url;
-                // Note: clearCart() should ideally happen after successful payment, 
-                // but since we redirect away, we can clear it here for now
+            const data = response.data;
+
+            if (data.upi_uri || data.payment_url) {
+                // Show UPI payment options
+                setPaymentInfo(data);
                 clearCart();
-            } else if (response.data.order_id) {
-                setOrderMessage(response.data.message || 'Order placed successfully! We will contact you for payment.');
-                setTimeout(() => {
-                    clearCart();
-                    onClose();
-                }, 5000);
+            } else if (data.order_id) {
+                setOrderMessage(data.message || 'Order placed successfully!');
+                setTimeout(() => { clearCart(); onClose(); }, 5000);
             }
         } catch (err) {
-            console.error("Checkout error details:", err.response?.data);
+            console.error("Checkout error:", err.response?.data);
             const errorMsg = err.response?.data?.detail;
-
-            if (errorMsg && errorMsg.includes("Shipping address and phone number are required")) {
+            if (errorMsg && errorMsg.includes("Shipping address")) {
                 setOrderMessage(
                     <span>
                         <strong>Incomplete Profile!</strong><br />
-                        Please add your shipping address and phone number in your account settings before placing an order.
+                        Please add your shipping address and phone number before placing an order.
                     </span>
                 );
             } else {
@@ -65,7 +63,63 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
         }
     };
 
+
     if (!isOpen) return null;
+
+    // Show UPI Payment screen after order is placed
+    if (paymentInfo) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl text-center">
+                    <div className="mb-4">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800">Order Placed! 🎉</h2>
+                        <p className="text-gray-500 mt-1">Order #{paymentInfo.order_id} • ₹{paymentInfo.upi_uri?.match(/am=([^&]+)/)?.[1] || ''}</p>
+                    </div>
+
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                        <p className="text-sm text-gray-600 mb-1">Complete your payment via UPI</p>
+                        <p className="font-bold text-green-700 text-lg">naveen1998726-1@okicici</p>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                        {/* GPay button - works on mobile */}
+                        <a
+                            href={paymentInfo.gpay_url || paymentInfo.upi_uri}
+                            className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+                        >
+                            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 10.9v2.2h3.6c-.2 1-1.1 2.9-3.6 2.9-2.2 0-3.9-1.8-3.9-4s1.7-4 3.9-4c1.2 0 2.1.5 2.6 1l1.5-1.5C15 6.5 13.6 6 12 6c-3.3 0-6 2.7-6 6s2.7 6 6 6c3.5 0 5.8-2.4 5.8-5.8 0-.4 0-.7-.1-1H12z" /></svg>
+                            Pay with GPay / UPI App
+                        </a>
+
+                        {/* Generic UPI link */}
+                        <a
+                            href={paymentInfo.upi_uri}
+                            className="flex items-center justify-center gap-2 w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition"
+                        >
+                            📱 Open UPI App
+                        </a>
+                    </div>
+
+                    <p className="text-xs text-gray-400 mb-4">
+                        On mobile: tap a button above to open your UPI app.<br />
+                        On desktop: scan QR from your UPI app using the UPI ID above.
+                    </p>
+
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 text-sm underline"
+                    >
+                        Done / Close
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
@@ -117,7 +171,7 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
                             </div>
 
                             {orderMessage && (
-                                <div className={`mb-6 p-4 rounded-xl text-center text-sm font-medium ${orderMessage.includes('failed') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                                <div className={`mb-6 p-4 rounded-xl text-center text-sm font-medium ${typeof orderMessage === 'string' && orderMessage.toLowerCase().includes('fail') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                                     {orderMessage}
                                 </div>
                             )}
@@ -138,3 +192,4 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
 };
 
 export default CartModal;
+

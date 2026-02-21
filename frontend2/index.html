@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — Customer Orders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --card: #21253a;
+            --border: #2c3050;
+            --accent: #6c63ff;
+            --accent2: #48cfad;
+            --red: #ff6b6b;
+            --yellow: #ffd460;
+            --text: #e8eaf0;
+            --muted: #7a7f9c;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header .logo {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header .subtitle {
+            color: var(--muted);
+            font-size: 13px;
+            margin-left: auto;
+        }
+
+        /* ── Login card ── */
+        #login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 64px);
+            padding: 32px;
+        }
+
+        .login-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+
+        .login-card p {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            transition: border-color .2s;
+            margin-bottom: 14px;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+        }
+
+        button:hover {
+            opacity: .9;
+        }
+
+        button:active {
+            transform: scale(.98);
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        /* ── Dashboard ── */
+        #dashboard {
+            display: none;
+            padding: 32px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .dash-top {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .dash-top h1 {
+            font-size: 22px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+        }
+
+        .stat-card .label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+        }
+
+        .filter-bar input {
+            flex: 1;
+            min-width: 180px;
+            margin-bottom: 0;
+        }
+
+        select {
+            padding: 12px 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-refresh {
+            padding: 12px 18px;
+            width: auto;
+            font-size: 13px;
+        }
+
+        /* ── Orders table / cards ── */
+        .order-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color .2s;
+        }
+
+        .order-card:hover {
+            border-color: var(--accent);
+        }
+
+        .order-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            background: var(--card);
+            cursor: pointer;
+            flex-wrap: wrap;
+        }
+
+        .order-id {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .order-date {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .order-amount {
+            margin-left: auto;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .badge-pending {
+            background: #2d2520;
+            color: var(--yellow);
+        }
+
+        .badge-awaiting_verification {
+            background: #1c2030;
+            color: #60a5fa;
+        }
+
+        .badge-confirmed {
+            background: #1a2e24;
+            color: var(--accent2);
+        }
+
+        .badge-cancelled {
+            background: #2d1818;
+            color: var(--red);
+        }
+
+        .order-body {
+            display: none;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            gap: 24px;
+        }
+
+        .order-body.open {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .order-body.open {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-group h4 {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            align-items: flex-start;
+        }
+
+        .info-row .key {
+            color: var(--muted);
+            font-size: 13px;
+            min-width: 80px;
+        }
+
+        .info-row .val {
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+            font-size: 13px;
+        }
+
+        .items-table th {
+            text-align: left;
+            color: var(--muted);
+            padding: 4px 8px 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .items-table td {
+            padding: 6px 8px 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .utr-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-family: monospace;
+            letter-spacing: .08em;
+            color: var(--accent2);
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
+        /* ── Status confirm button ── */
+        .action-btn {
+            margin-top: 14px;
+            padding: 9px 14px;
+            font-size: 13px;
+            border-radius: 7px;
+            width: auto;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, var(--accent2), #36b37e);
+        }
+
+        .btn-cancel {
+            background: linear-gradient(135deg, var(--red), #c0392b);
+        }
+
+        /* ── Loading / empty ── */
+        .loader {
+            text-align: center;
+            padding: 60px;
+            color: var(--muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #error-msg {
+            color: var(--red);
+            font-size: 13px;
+            margin-top: 10px;
+            min-height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══════════ HEADER ══════════ -->
+    <header>
+        <span class="logo">🍃 Webplate</span>
+        <span style="color:var(--muted);font-size:13px;">Admin Panel</span>
+        <span class="subtitle" id="header-user" style="display:none;"></span>
+    </header>
+
+    <!-- ══════════ LOGIN ══════════ -->
+    <section id="login-section">
+        <div class="login-card">
+            <h2>🔐 Admin Login</h2>
+            <p>Enter Admin Secret Key to view orders</p>
+            <input type="text" id="api-url" value="https://sweet-appreciation-production-a478.up.railway.app"
+                placeholder="API URL" />
+            <input type="password" id="admin-key" placeholder="Admin Password" />
+            <button id="login-btn" onclick="doLogin()">Login</button>
+            <div id="error-msg"></div>
+        </div>
+    </section>
+
+    <!-- ══════════ DASHBOARD ══════════ -->
+    <div id="dashboard">
+
+        <div class="dash-top">
+            <h1>📦 Customer Orders</h1>
+            <button class="btn-refresh" onclick="loadOrders()" style="margin-left:auto;">🔄 Refresh</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">Total Orders</div>
+                <div class="value" id="stat-total">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Pending</div>
+                <div class="value" id="stat-pending" style="color:var(--yellow)">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Awaiting verify</div>
+                <div class="value" id="stat-awaiting" style="color:#60a5fa">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Confirmed</div>
+                <div class="value" id="stat-confirmed" style="color:var(--accent2)">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Revenue (₹)</div>
+                <div class="value" id="stat-revenue" style="color:var(--accent)">—</div>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <input type="text" id="search-input" placeholder="🔍  Search by name, email, UTR..."
+                oninput="renderOrders()" />
+            <select id="status-filter" onchange="renderOrders()">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="awaiting_verification">Awaiting Verification</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+
+        <div id="orders-container">
+            <div class="loader">
+                <div class="spinner"></div>
+                <div>Loading orders…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allOrders = [];
+        let API_BASE = '';
+        let ADMIN_KEY = '';
+
+        /* ── Login ── */
+        async function doLogin() {
+            const btn = document.getElementById('login-btn');
+            const err = document.getElementById('error-msg');
+            err.textContent = '';
+            API_BASE = (document.getElementById('api-url').value || 'http://localhost:8000').replace(/\/$/, '');
+            ADMIN_KEY = document.getElementById('admin-key').value.trim();
+
+            if (!ADMIN_KEY) { err.textContent = 'Please enter the admin key.'; return; }
+
+            btn.disabled = true;
+            btn.textContent = 'Connecting…';
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/orders?x_admin_key=${encodeURIComponent(ADMIN_KEY)}`);
+                if (res.status === 403) throw new Error('Wrong admin key — check your backend SECRET_KEY.');
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                allOrders = await res.json();
+
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('header-user').style.display = 'inline';
+                document.getElementById('header-user').textContent = `🔑 Admin • ${allOrders.length} orders`;
+
+                updateStats();
+                renderOrders();
+            } catch (e) {
+                err.textContent = e.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
+        }
+
+        /* ── Load / refresh orders ── */
+        async function loadOrders() {
+            document.getElementById('orders-container').innerHTML =
+                '<div class="loader"><div class="spinner"></div><div>Loading…</div></div>';
+            try {
+                const res = await fetch(`${API_BASE}/admin/orders?x_admin_key=${encodeURIComponent(ADMIN_KEY)}`);
+                if (!res.ok) throw new Error('Fetch failed');
+                allOrders = await res.json();
+                updateStats();
+                renderOrders();
+            } catch (e) {
+                document.getElementById('orders-container').innerHTML =
+                    `<div class="loader" style="color:var(--red)">⚠️ ${e.message}</div>`;
+            }
+        }
+
+        /* ── Stats ── */
+        function updateStats() {
+            const s = (st) => allOrders.filter(o => o.status === st).length;
+            document.getElementById('stat-total').textContent = allOrders.length;
+            document.getElementById('stat-pending').textContent = s('pending');
+            document.getElementById('stat-awaiting').textContent = s('awaiting_verification');
+            document.getElementById('stat-confirmed').textContent = s('confirmed');
+            const rev = allOrders
+                .filter(o => o.status === 'confirmed')
+                .reduce((sum, o) => sum + (o.total_amount || 0), 0);
+            document.getElementById('stat-revenue').textContent = '₹' + rev.toFixed(2);
+        }
+
+        /* ── Render orders ── */
+        function renderOrders() {
+            const q = document.getElementById('search-input').value.toLowerCase();
+            const sf = document.getElementById('status-filter').value;
+            const con = document.getElementById('orders-container');
+
+            let list = allOrders.filter(o => {
+                if (sf && o.status !== sf) return false;
+                if (q) {
+                    const hay = [
+                        o.order_id,
+                        o.customer?.name,
+                        o.customer?.email,
+                        o.customer?.phone,
+                        o.utr_number,
+                        o.transaction_id,
+                    ].join(' ').toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+
+            if (!list.length) {
+                con.innerHTML = '<div class="loader">No orders match your filter.</div>';
+                return;
+            }
+
+            con.innerHTML = list.map(o => orderCard(o)).join('');
+        }
+
+        /* ── Status badge HTML ── */
+        function badge(st) {
+            const cls = {
+                pending: 'badge-pending',
+                awaiting_verification: 'badge-awaiting_verification',
+                confirmed: 'badge-confirmed',
+                cancelled: 'badge-cancelled',
+            }[st] || 'badge-pending';
+            return `<span class="badge ${cls}">${st.replace(/_/g, ' ')}</span>`;
+        }
+
+        /* ── Order card HTML ── */
+        function orderCard(o) {
+            const c = o.customer || {};
+            const date = o.created_at ? o.created_at.slice(0, 19).replace('T', ' ') : '—';
+
+            const items = (o.items || []).map(i =>
+                `<tr>
+        <td>${escHtml(i.product_name)}</td>
+        <td style="text-align:center">${i.quantity}</td>
+        <td style="text-align:right">₹${(i.price * i.quantity).toFixed(2)}</td>
+      </tr>`
+            ).join('');
+
+            const utrSection = o.utr_number
+                ? `<div class="info-row"><div class="key">UTR</div>
+           <div class="val"><div class="utr-box">${escHtml(o.utr_number)}</div></div></div>`
+                : `<div class="info-row"><div class="key">UTR</div><div class="val" style="color:var(--muted)">Not submitted yet</div></div>`;
+
+            const txnSection = o.transaction_id
+                ? `<div class="info-row"><div class="key">Txn ID</div><div class="val" style="font-size:12px;color:var(--muted)">${escHtml(o.transaction_id)}</div></div>`
+                : '';
+
+            // Action buttons for admin
+            let actionBtns = '';
+            if (o.status === 'awaiting_verification') {
+                actionBtns = `
+        <button class="action-btn btn-confirm"
+          onclick="updateStatus(${o.order_id},'confirmed',this)">✅ Confirm Payment</button>
+        <button class="action-btn btn-cancel"
+          onclick="updateStatus(${o.order_id},'cancelled',this)" style="margin-left:8px">❌ Cancel</button>`;
+            } else if (o.status === 'pending') {
+                actionBtns = `
+        <button class="action-btn btn-cancel"
+          onclick="updateStatus(${o.order_id},'cancelled',this)">❌ Cancel Order</button>`;
+            }
+
+            return `
+    <div class="order-card">
+      <div class="order-head" onclick="toggleCard(this)">
+        <span class="order-id">#${o.order_id}</span>
+        ${badge(o.status)}
+        <span class="order-date">${date}</span>
+        <span style="color:var(--muted);font-size:13px">${escHtml(c.name || '—')}</span>
+        <span class="order-amount">₹${(o.total_amount || 0).toFixed(2)}</span>
+        <span style="color:var(--muted);font-size:18px;margin-left:6px">›</span>
+      </div>
+      <div class="order-body">
+        <div class="info-group">
+          <h4>Customer Info</h4>
+          <div class="info-row"><div class="key">Name</div>   <div class="val">${escHtml(c.name || '—')}</div></div>
+          <div class="info-row"><div class="key">Email</div>  <div class="val">${escHtml(c.email || '—')}</div></div>
+          <div class="info-row"><div class="key">Phone</div>  <div class="val">${escHtml(c.phone || '—')}</div></div>
+          <div class="info-row"><div class="key">Address</div><div class="val">${escHtml(c.shipping_address || '—')}</div></div>
+        </div>
+        <div class="info-group">
+          <h4>Payment</h4>
+          ${utrSection}
+          ${txnSection}
+          <div class="info-row"><div class="key">Total</div><div class="val" style="font-weight:600;color:var(--accent2)">₹${(o.total_amount || 0).toFixed(2)}</div></div>
+          <div style="margin-top:16px">
+            <h4 style="margin-bottom:10px">Items</h4>
+            <table class="items-table">
+              <thead><tr><th>Product</th><th style="text-align:center">Qty</th><th style="text-align:right">Amount</th></tr></thead>
+              <tbody>${items || '<tr><td colspan="3" style="color:var(--muted)">No items recorded</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px">${actionBtns}</div>
+        </div>
+      </div>
+    </div>`;
+        }
+
+        /* ── Toggle card open/close ── */
+        function toggleCard(head) {
+            const body = head.nextElementSibling;
+            body.classList.toggle('open');
+            const arrow = head.querySelector('span:last-child');
+            arrow.style.transform = body.classList.contains('open') ? 'rotate(90deg)' : '';
+        }
+
+        /* ── Update order status (confirm / cancel) ── */
+        async function updateStatus(orderId, newStatus, btn) {
+            btn.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/admin/orders/${orderId}/status?x_admin_key=${encodeURIComponent(ADMIN_KEY)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus }),
+                });
+                if (!res.ok) {
+                    const j = await res.json().catch(() => ({}));
+                    throw new Error(j.detail || `Error ${res.status}`);
+                }
+                await loadOrders();
+            } catch (e) {
+                alert('Failed: ' + e.message);
+                btn.disabled = false;
+            }
+        }
+
+        /* ── XSS helper ── */
+        function escHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        /* ── Allow Enter key on login ── */
+        document.getElementById('admin-key').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+    </script>
+</body>
+
+</html>

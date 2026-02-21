@@ -332,6 +332,70 @@ def confirm_order_payment(
         "status": "awaiting_verification"
     }
 
+@app.get("/admin/orders", tags=["Admin"])
+def get_all_orders(x_admin_key: str = None, db: Session = Depends(get_db)):
+    """
+    Admin endpoint to list all orders with customer and item details.
+    Pass x_admin_key query param equal to ADMIN_PASSWORD env var.
+    """
+    import os as _os
+    secret = _os.getenv("ADMIN_PASSWORD", "Naveen12345")
+    if x_admin_key != secret:
+        raise HTTPException(status_code=403, detail="Forbidden: invalid admin password")
+
+    orders = db.query(models.Order).order_by(models.Order.id.desc()).all()
+    result = []
+    for o in orders:
+        user = o.user
+        result.append({
+            "order_id": o.id,
+            "status": o.status,
+            "total_amount": o.total_amount,
+            "transaction_id": o.transaction_id,
+            "utr_number": o.utr_number,
+            "created_at": o.created_at,
+            "customer": {
+                "name": user.full_name if user else "—",
+                "email": user.email if user else "—",
+                "phone": user.phone if user else "—",
+                "shipping_address": user.shipping_address if user else "—",
+            },
+            "items": [
+                {
+                    "product_name": item.product_name,
+                    "quantity": item.quantity,
+                    "price": item.price,
+                }
+                for item in o.items
+            ],
+        })
+    return result
+
+@app.patch("/admin/orders/{order_id}/status", tags=["Admin"])
+def update_order_status(order_id: int, payload: dict, x_admin_key: str = None, db: Session = Depends(get_db)):
+    """
+    Admin endpoint to update order status (confirm / cancel).
+    Pass x_admin_key query param equal to ADMIN_PASSWORD env var.
+    """
+    import os as _os
+    secret = _os.getenv("ADMIN_PASSWORD", "Naveen12345")
+    if x_admin_key != secret:
+        raise HTTPException(status_code=403, detail="Forbidden: invalid admin password")
+
+    db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    new_status = payload.get("status")
+    allowed = {"pending", "awaiting_verification", "confirmed", "cancelled"}
+    if new_status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Status must be one of {allowed}")
+
+    db_order.status = new_status
+    db.commit()
+    print(f"Admin: order #{order_id} status -> {new_status}")
+    return {"order_id": order_id, "status": new_status}
+
 @app.get("/contact-info/", tags=["Contact"])
 def get_contact_info():
     contact = config.get("contact", {})

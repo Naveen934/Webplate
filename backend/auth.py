@@ -10,7 +10,7 @@ load_dotenv()
 # Change this to a strong secret key in production
 SECRET_KEY = os.getenv("SECRET_KEY", "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours for better local development experience
 
 # Use pbkdf2_sha256 which is pure python and avoids compatibility issues with bcrypt on some systems
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")

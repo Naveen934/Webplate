@@ -37,7 +37,7 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
                 // Redirect to payment gateway
                 window.location.href = response.data.payment_url;
                 // Note: clearCart() should ideally happen after successful payment, 
-                // but since we redirect away, we can clear it here or rely on success return
+                // but since we redirect away, we can clear it here for now
                 clearCart();
             } else if (response.data.order_id) {
                 setOrderMessage(response.data.message || 'Order placed successfully! We will contact you for payment.');
@@ -47,9 +47,19 @@ const CartModal = ({ isOpen, onClose, onAuthRequired }) => {
                 }, 5000);
             }
         } catch (err) {
-            console.error("Checkout error", err);
-            const errorMsg = err.response?.data?.detail || 'Failed to place order. Please try again.';
-            setOrderMessage(errorMsg);
+            console.error("Checkout error details:", err.response?.data);
+            const errorMsg = err.response?.data?.detail;
+
+            if (errorMsg && errorMsg.includes("Shipping address and phone number are required")) {
+                setOrderMessage(
+                    <span>
+                        <strong>Incomplete Profile!</strong><br />
+                        Please add your shipping address and phone number in your account settings before placing an order.
+                    </span>
+                );
+            } else {
+                setOrderMessage(errorMsg || 'Failed to place order. Please try again.');
+            }
         } finally {
             setIsProcessing(false);
         }

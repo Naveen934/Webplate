@@ -61,22 +61,36 @@ def get_db():
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 async def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise credentials_exception
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token missing subject",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         token_data = schemas.TokenData(email=email)
-    except JWTError:
-        raise credentials_exception
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Could not validate credentials: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user = crud.get_user_by_email(db, email=token_data.email)
     if user is None:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 @app.get("/", tags=["Root"])
@@ -154,7 +168,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
         
         # Integrate with Payment Gateway
         # Use the URL where the Payment_gateway service is running
-        PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "http://localhost:8001")
+        PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "http://localhost:8001").rstrip('/')
         
         payment_data = {
             "amount": order.total_amount,
@@ -163,10 +177,11 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
             "transaction_id": f"ORD{db_order.id}-{int(time.time())}"
         }
         
+        print(f"Connecting to payment gateway at: {PAYMENT_GATEWAY_URL}/payment/create")
         try:
-            # Note: We need to import time for the unique transaction ID
-            import time
-            response = requests.post(f"{PAYMENT_GATEWAY_URL}/payment/create", json=payment_data)
+            response = requests.post(f"{PAYMENT_GATEWAY_URL}/payment/create", json=payment_data, timeout=5)
+            print(f"Payment gateway response status: {response.status_code}")
+            
             if response.status_code == 200:
                 payment_info = response.json()
                 # Prepend the gateway URL if pay_url is relative
@@ -174,23 +189,32 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
                 if pay_url and pay_url.startswith("/"):
                     pay_url = f"{PAYMENT_GATEWAY_URL}{pay_url}"
                 
+                print(f"Payment session created: {pay_url}")
                 return {
                     "order_id": db_order.id,
                     "payment_url": pay_url,
                     "transaction_id": payment_info.get("transaction_id")
                 }
             else:
+                print(f"Payment gateway error details: {response.text}")
                 return {
                     "order_id": db_order.id,
                     "payment_url": None,
-                    "message": "Payment gateway unreachable, but order saved."
+                    "message": "Payment gateway returned an error, but order saved."
                 }
-        except Exception as e:
-            print(f"Payment gateway error: {e}")
+        except requests.exceptions.RequestException as e:
+            print(f"Payment gateway connection error: {e}")
             return {
                 "order_id": db_order.id,
                 "payment_url": None,
-                "message": "Payment system temporarily unavailable."
+                "message": "Payment system temporarily unreachable."
+            }
+        except Exception as e:
+            print(f"Unexpected payment gateway error: {e}")
+            return {
+                "order_id": db_order.id,
+                "payment_url": None,
+                "message": "Payment system encountered an unexpected error."
             }
 
     except Exception as e:
